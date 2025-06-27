@@ -1,8 +1,10 @@
+// SubMenuItem/index.tsx
 import React, { useState, useContext } from 'react';
 import { MenuContext } from 'src/components/dls/Menu/context';
 import { useWindowDimensions } from 'src/utils/widthScreen/validateScreenWidth';
-import { Item } from './styles';
+import { Item, ContainerSubMenu, SubItem } from './styles';
 import IconX from 'src/components/dls/IconX';
+import theme from 'src/styles/theme';
 
 export interface SubMenuItemProps {
   title: string;
@@ -10,6 +12,7 @@ export interface SubMenuItemProps {
   id: string;
   Badge?: JSX.Element;
   disabledLink?: boolean;
+  collapseMenu?: boolean;
   subItems: Array<{
     id: string;
     title: string;
@@ -26,6 +29,7 @@ const SubMenuItem: React.FC<SubMenuItemProps> = ({
   id,
   Badge,
   disabledLink = false,
+  collapseMenu = false,
   subItems
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -40,7 +44,7 @@ const SubMenuItem: React.FC<SubMenuItemProps> = ({
   };
 
   const handleSubItemClick = (subItem: any) => {
-    if (subItem.redirectTo === '') {
+    if (subItem.redirectTo && subItem.redirectTo !== '') {
       // Navegar programaticamente se necessário
       // browser.openLink(subItem.redirectTo);
     } else {
@@ -59,11 +63,13 @@ const SubMenuItem: React.FC<SubMenuItemProps> = ({
       <Item
         id={id}
         title={title}
-        active={menuContext.selectedItemTitle === title || 
-                subItems.some(item => menuContext.selectedItemTitle === item.title)}
-        collapseMenu={menuContext.collapseMenu}
+        active={
+          menuContext.selectedItemTitle === title || 
+          subItems.some(item => menuContext.selectedItemTitle === item.title)
+        }
+        collapseMenu={collapseMenu}
         onClick={handleMainItemClick}
-        to={''} // Não navega diretamente
+        // to='' // Removido o to pois está causando erro
         disabledLink={disabledLink}
       >
         <IconX 
@@ -77,50 +83,50 @@ const SubMenuItem: React.FC<SubMenuItemProps> = ({
           {title}
         </span>
         
-        {/* Seta indicadora */}
+        {/* Seta indicadora com animação */}
         <IconX 
-          name={isExpanded ? 'chevron-up' : 'chevron-down'} 
+          name='chevron-down'
           color={theme.colors.ExperianGrey2_400}
           style={{ 
             marginLeft: 'auto',
-            transition: 'transform 0.2s ease'
+            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.3s ease-in-out'
           }}
         />
         
-        {Badge && !menuContext.collapseMenu && width > 1300 && (
+        {Badge && !collapseMenu && width > 1300 && (
           <div style={{ marginLeft: 'auto' }}>
             {Badge}
           </div>
         )}
       </Item>
 
-      {/* Subitens */}
-      {isExpanded && subItems.map((subItem) => (
-        <Item
-          key={subItem.id}
-          id={subItem.id}
-          title={subItem.title}
-          active={menuContext.selectedItemTitle === subItem.title}
-          collapseMenu={menuContext.collapseMenu}
-          onClick={() => handleSubItemClick(subItem)}
-          to={subItem.goTo || ''}
-          disabledLink={subItem.disabledLink}
-          style={{
-            paddingLeft: '60px', // Indentação para mostrar hierarquia
-            backgroundColor: '#f8f9fa' // Cor diferente para subitens
-          }}
-        >
-          <span style={{ color: '#303030' }}>
-            {subItem.title}
-          </span>
-          
-          {subItem.Badge && !menuContext.collapseMenu && width > 1300 && (
-            <div style={{ marginLeft: 'auto' }}>
-              {subItem.Badge}
-            </div>
-          )}
-        </Item>
-      ))}
+      {/* Subitens com animação */}
+      <ContainerSubMenu isExpanded={isExpanded}>
+        {subItems.map((subItem, index) => (
+          <SubItem
+            key={subItem.id}
+            id={subItem.id}
+            title={subItem.title}
+            active={menuContext.selectedItemTitle === subItem.title}
+            collapseMenu={collapseMenu}
+            onClick={() => handleSubItemClick(subItem)}
+            goTo={subItem.goTo || '#'} // Usando goTo ao invés de to
+            disabledLink={subItem.disabledLink}
+            delay={index * 0.05} // Delay escalonado
+          >
+            <span style={{ color: '#303030' }}>
+              {subItem.title}
+            </span>
+            
+            {subItem.Badge && !collapseMenu && width > 1300 && (
+              <div style={{ marginLeft: 'auto' }}>
+                {subItem.Badge}
+              </div>
+            )}
+          </SubItem>
+        ))}
+      </ContainerSubMenu>
     </>
   );
 };

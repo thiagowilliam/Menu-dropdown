@@ -1,133 +1,119 @@
-// SubMenuItem/index.tsx
 import React, { useState, useContext } from 'react';
+import { useHistory } from 'react-router-dom';
 import { MenuContext } from 'src/components/dls/Menu/context';
-import { useWindowDimensions } from 'src/utils/widthScreen/validateScreenWidth';
-import { Item, ContainerSubMenu, SubItem } from './styles';
-import IconX from 'src/components/dls/IconX';
-import theme from 'src/styles/theme';
 
-export interface SubMenuItemProps {
-  title: string;
-  iconname: string;
+interface SubItemType {
   id: string;
-  Badge?: JSX.Element;
-  disabledLink?: boolean;
-  collapseMenu?: boolean;
-  subItems: Array<{
-    id: string;
-    title: string;
-    goTo?: string;
-    redirectTo?: string;
-    Badge?: JSX.Element;
-    disabledLink?: boolean;
-  }>;
+  title: string;
+  goTo: string;
+  redirectTo?: string;
+  disabledLink: boolean;
+}
+
+interface SubMenuItemProps {
+  title: string;
+  iconName: string;
+  id: string;
+  disabledLink: boolean;
+  collapseMenu: boolean;
+  subItems: SubItemType[];
+  active: boolean; // SE O ITEM PRINCIPAL ESTÁ ATIVO
+  selectedSubItem: string; // QUAL SUBITEM ESTÁ SELECIONADO
+  onSubItemClick: (mainTitle: string, subTitle: string) => void;
 }
 
 const SubMenuItem: React.FC<SubMenuItemProps> = ({
   title,
-  iconname,
+  iconName,
   id,
-  Badge,
-  disabledLink = false,
-  collapseMenu = false,
-  subItems
+  disabledLink,
+  collapseMenu,
+  subItems,
+  active,
+  selectedSubItem,
+  onSubItemClick
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const menuContext = useContext(MenuContext);
-  const { width } = useWindowDimensions();
+  const history = useHistory();
+  const { updateSelectedItemTitle } = useContext(MenuContext);
+  const [isExpanded, setIsExpanded] = useState(true); // Sempre expandido inicialmente
 
   const handleMainItemClick = () => {
     if (!disabledLink) {
-      setIsExpanded(!isExpanded);
-      menuContext.updateSelectedItemTitle(title);
+      // Clique no item principal sem subitem ativo
+      updateSelectedItemTitle(title);
+      // Opcional: navegar para rota padrão do item principal
     }
   };
 
-  const handleSubItemClick = (subItem: any) => {
-    if (subItem.redirectTo && subItem.redirectTo !== '') {
-      // Navegar programaticamente se necessário
-      // browser.openLink(subItem.redirectTo);
-    } else {
-      menuContext.updateSelectedItemTitle(subItem.title);
-    }
-    
-    // Fechar submenu em telas menores
-    if (width < 1300) {
-      menuContext.collapseMenu();
+  const handleSubItemClick = (subItem: SubItemType) => {
+    if (!subItem.disabledLink) {
+      // ATUALIZA O CONTEXTO COM ITEM PRINCIPAL E SUBITEM
+      onSubItemClick(title, subItem.title);
+      
+      // NAVEGA PARA A ROTA
+      if (subItem.redirectTo) {
+        window.open(subItem.redirectTo, '_blank');
+      } else {
+        history.push(subItem.goTo);
+      }
     }
   };
 
   return (
-    <>
+    <div>
       {/* Item Principal */}
-      <Item
-        id={id}
-        title={title}
-        active={
-          menuContext.selectedItemTitle === title || 
-          subItems.some(item => menuContext.selectedItemTitle === item.title)
-        }
-        collapseMenu={collapseMenu}
+      <div
         onClick={handleMainItemClick}
-        // to='' // Removido o to pois está causando erro
-        disabledLink={disabledLink}
+        style={{
+          backgroundColor: active ? 'var(--selected-bg-color)' : 'transparent',
+          cursor: 'pointer',
+          padding: '12px',
+          borderRadius: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}
       >
-        <IconX 
-          name={iconname} 
-          color={theme.colors.ExperianGrey2_400} 
-        />
-        <span style={{ 
-          color: '#303030', 
-          flex: 1 
-        }}>
-          {title}
-        </span>
-        
-        {/* Seta indicadora com animação */}
-        <IconX 
-          name='chevron-down'
-          color={theme.colors.ExperianGrey2_400}
-          style={{ 
-            marginLeft: 'auto',
-            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-            transition: 'transform 0.3s ease-in-out'
-          }}
-        />
-        
-        {Badge && !collapseMenu && width > 1300 && (
-          <div style={{ marginLeft: 'auto' }}>
-            {Badge}
-          </div>
+        <Icon name={iconName} />
+        {!collapseMenu && <span>{title}</span>}
+        {!collapseMenu && (
+          <Icon 
+            name="angle-down"
+            style={{
+              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.3s ease-in-out',
+              marginLeft: 'auto'
+            }}
+          />
         )}
-      </Item>
+      </div>
 
-      {/* Subitens com animação */}
-      <ContainerSubMenu isExpanded={isExpanded}>
-        {subItems.map((subItem, index) => (
-          <SubItem
-            key={subItem.id}
-            id={subItem.id}
-            title={subItem.title}
-            active={menuContext.selectedItemTitle === subItem.title}
-            collapseMenu={collapseMenu}
-            onClick={() => handleSubItemClick(subItem)}
-            goTo={subItem.goTo || '#'} // Usando goTo ao invés de to
-            disabledLink={subItem.disabledLink}
-            delay={index * 0.05} // Delay escalonado
-          >
-            <span style={{ color: '#303030' }}>
-              {subItem.title}
-            </span>
-            
-            {subItem.Badge && !collapseMenu && width > 1300 && (
-              <div style={{ marginLeft: 'auto' }}>
-                {subItem.Badge}
-              </div>
-            )}
-          </SubItem>
-        ))}
-      </ContainerSubMenu>
-    </>
+      {/* Subitens - Sempre visíveis quando expandido */}
+      {isExpanded && !collapseMenu && (
+        <div style={{ marginLeft: '24px' }}>
+          {subItems.map((subItem) => (
+            <div
+              key={subItem.id}
+              onClick={() => handleSubItemClick(subItem)}
+              style={{
+                // SUBITEM ATIVO BASEADO NO selectedSubItem
+                backgroundColor: selectedSubItem === subItem.title 
+                  ? 'var(--selected-bg-color)' 
+                  : 'transparent',
+                cursor: subItem.disabledLink ? 'not-allowed' : 'pointer',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                opacity: subItem.disabledLink ? 0.5 : 1,
+                margin: '4px 0',
+                transition: 'background-color 0.2s ease'
+              }}
+            >
+              <span>{subItem.title}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
